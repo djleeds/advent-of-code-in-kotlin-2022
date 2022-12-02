@@ -9,21 +9,37 @@ fun main() {
         return buildList {
             var lastBoundary = 0
             original.forEachIndexed { index: Int, value: T ->
-                if (boundary(value)) {
-                    add(original.subList(lastBoundary, index))
+                val isLastIndex = index == original.lastIndex
+                if (boundary(value) || isLastIndex) {
+                    val toIndexExclusive = index.plus(if (isLastIndex) 1 else 0)
+                    add(original.subList(lastBoundary, toIndexExclusive))
                     lastBoundary = index + 1
                 }
             }
         }
     }
 
-    fun elves(input: List<String>) = input.split { it.isEmpty() }.map { data -> Elf(data.map { it.toInt() }.map(::Food)) }
+    fun List<String>.toElf() =
+        Elf(map { Food(it.toInt()) })
+
+    fun parse(input: List<String>) =
+        input
+            .split { it.isEmpty() }
+            .map { it.toElf() }
 
     fun part1(input: List<String>): Int =
-        elves(input).maxBy { it.calorieCount }.calorieCount
+        parse(input)
+            .maxBy { it.calorieCount }
+            .calorieCount
 
     fun part2(input: List<String>): Int =
-        elves(input).sortedByDescending { it.calorieCount }.take(3).sumOf { it.calorieCount }
+        parse(input)
+            .sortedByDescending { it.calorieCount }
+            .take(3)
+            .sumOf { it.calorieCount }
+
+    val testInput = readInput("Day01_test")
+    check(part1(testInput) == 24_000)
 
     val input = readInput("Day01")
     println(part1(input))
