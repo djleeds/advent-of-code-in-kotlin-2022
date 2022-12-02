@@ -4,23 +4,13 @@ fun main() {
         val calorieCount = inventory.sumOf { it.calories }
     }
 
-    fun <T> List<T>.split(boundary: (T) -> Boolean): List<List<T>> {
-        val original = this
-        return buildList {
-            var lastBoundary = 0
-            original.forEachIndexed { index: Int, value: T ->
-                val isLastIndex = index == original.lastIndex
-                if (boundary(value) || isLastIndex) {
-                    val toIndexExclusive = index.plus(if (isLastIndex) 1 else 0)
-                    add(original.subList(lastBoundary, toIndexExclusive))
-                    lastBoundary = index + 1
-                }
-            }
-        }
-    }
+    fun List<String>.toElf() = Elf(map { Food(it.toInt()) })
 
-    fun List<String>.toElf() =
-        Elf(map { Food(it.toInt()) })
+    fun <T> List<T>.split(boundary: (T) -> Boolean): List<List<T>> =
+        mapIndexed { index, value -> index.takeIf { boundary(value) } }
+            .filterNotNull()
+            .let { listOf(-1) + it + size }
+            .windowed(2) { (first, second) -> subList(first + 1, second) }
 
     fun parse(input: List<String>) =
         input
