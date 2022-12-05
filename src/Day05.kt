@@ -11,7 +11,8 @@ class Movement(val count: Int, val sourceId: Int, val destinationId: Int) {
 }
 
 class Crate(val id: Char)
-class Ship(private val stacks: List<Stack<Crate>>) {
+
+class Crane(private val stacks: List<Stack<Crate>>) {
     fun move(movement: Movement) {
         val source = stacks[movement.sourceId.asZeroBasedIndex()]
         val destination = stacks[movement.destinationId.asZeroBasedIndex()]
@@ -22,36 +23,34 @@ class Ship(private val stacks: List<Stack<Crate>>) {
     val message: String get() = stacks.map { it.peek().id }.joinToString("")
 
     companion object {
-        fun parse(input: List<String>): Ship {
-            val (crateInput, stackInput) = input.chunked(input.size - 1)
+        private const val fieldSize = 4
+        fun parse(input: List<String>): Crane {
+            val lines = input.reversed().drop(1)
 
-            return stackInput.single().mapIndexed { index, char -> index.takeIf { char != ' ' } }.filterNotNull()
-                .map { index ->
-                    Stack<Crate>().apply {
-                        crateInput.reversed().forEach { line -> line.getOrNull(index)?.takeUnless { it == ' ' }?.let { add(Crate(it)) } }
-                    }
-                }.let(::Ship)
+            return (1..input.last().length step fieldSize).map { index ->
+                lines.fold(Stack<Crate>()) { stack, item ->
+                    stack.apply { item.getOrNull(index)?.takeUnless { it == ' ' }?.let { push(Crate(it)) } }
+                }
+            }.let(::Crane)
         }
     }
 }
 
-class Puzzle(private val ship: Ship, private val movements: List<Movement>) {
+class Puzzle(private val crane: Crane, private val movements: List<Movement>) {
     fun solve(): String {
-        movements.forEach(ship::move)
-        return ship.message
+        movements.forEach(crane::move)
+        return crane.message
     }
 
     companion object {
         fun parse(input: String): Puzzle {
-            val (shipInput, movementInput) = input.split(nl.repeat(2)).map { it.split(nl) }
-            return Puzzle(Ship.parse(shipInput), movementInput.filter { it.isNotEmpty() }.map { Movement.parse(it) })
+            val (crane, movement) = input.split(nl.repeat(2)).map { it.split(nl) }
+            return Puzzle(Crane.parse(crane), movement.filter { it.isNotEmpty() }.map(Movement::parse))
         }
     }
 }
 
 fun main() {
-
-
     fun part1(input: String): String = Puzzle.parse(input).solve()
 
     fun part2(input: String): String = ""
