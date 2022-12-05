@@ -1,64 +1,57 @@
 import java.util.*
 
-private val nl = System.lineSeparator()
+typealias Stacks = List<Stack<Crate>>
+typealias CrateMover = (src: Stack<Crate>, dst: Stack<Crate>, count: Int) -> Unit
 
-class Movement(val count: Int, val sourceId: Int, val destinationId: Int) {
-    companion object {
-        private val pattern = Regex("move (\\d+) from (\\d+) to (\\d+)")
-        fun parse(input: String) =
-            pattern.find(input)?.groupValues?.let { Movement(it[1].toInt(), it[2].toInt(), it[3].toInt()) } ?: throw IllegalArgumentException()
+private object Parser {
+    private const val FIELD_SIZE = 4
+    private val newline = System.lineSeparator()
+    private val movementRegex = Regex("move (\\d+) from (\\d+) to (\\d+)")
+
+    fun parse(input: String): Pair<() -> Stacks, List<Movement>> {
+        val (crane, movement) = input.split(newline.repeat(2)).map { it.split(newline) }
+        return { parseStacks(crane) } to movement.filter { it.isNotEmpty() }.map(::parseMovement)
+    }
+
+    private fun parseMovement(input: String) =
+        movementRegex.find(input)?.groupValues?.let { Movement(it[1].toInt(), it[2].toInt(), it[3].toInt()) } ?: throw IllegalArgumentException()
+
+    private fun parseStacks(input: List<String>): List<Stack<Crate>> {
+        val lines = input.reversed().drop(1)
+
+        return (1..input.last().length step FIELD_SIZE).map { index ->
+            lines.fold(Stack<Crate>()) { stack, item ->
+                stack.apply { item.getOrNull(index)?.takeUnless { it == ' ' }?.let { push(Crate(it)) } }
+            }
+        }
     }
 }
 
-class Crate(val id: Char)
+data class Movement(val count: Int, val sourceId: Int, val destinationId: Int)
 
-class Crane(private val stacks: List<Stack<Crate>>) {
-    fun move(movement: Movement) {
-        val source = stacks[movement.sourceId.asZeroBasedIndex()]
-        val destination = stacks[movement.destinationId.asZeroBasedIndex()]
-        repeat(movement.count) { destination.push(source.pop()) }
-    }
+data class Crate(val id: Char)
 
-    private fun Int.asZeroBasedIndex() = this - 1
+class Crane(private val stacks: Stacks, private val move: CrateMover) {
     val message: String get() = stacks.map { it.peek().id }.joinToString("")
 
-    companion object {
-        private const val fieldSize = 4
-        fun parse(input: List<String>): Crane {
-            val lines = input.reversed().drop(1)
-
-            return (1..input.last().length step fieldSize).map { index ->
-                lines.fold(Stack<Crate>()) { stack, item ->
-                    stack.apply { item.getOrNull(index)?.takeUnless { it == ' ' }?.let { push(Crate(it)) } }
-                }
-            }.let(::Crane)
-        }
-    }
+    fun move(movements: List<Movement>) = movements.forEach(::move)
+    private fun move(movement: Movement) = with(movement) { move(stacks[sourceId - 1], stacks[destinationId - 1], count) }
 }
 
-class Puzzle(private val crane: Crane, private val movements: List<Movement>) {
-    fun solve(): String {
-        movements.forEach(crane::move)
-        return crane.message
-    }
-
-    companion object {
-        fun parse(input: String): Puzzle {
-            val (crane, movement) = input.split(nl.repeat(2)).map { it.split(nl) }
-            return Puzzle(Crane.parse(crane), movement.filter { it.isNotEmpty() }.map(Movement::parse))
-        }
-    }
-}
+val crateMover9000: CrateMover = { source, destination, count -> repeat(count) { destination.push(source.pop()) } }
+val crateMover9001: CrateMover = { source, destination, count -> (0 until count).map { source.pop() }.reversed().forEach(destination::push) }
 
 fun main() {
-    fun part1(input: String): String = Puzzle.parse(input).solve()
+    fun part1(stacks: Stacks, movements: List<Movement>): String = Crane(stacks, crateMover9000).apply { move(movements) }.message
+    fun part2(stacks: Stacks, movements: List<Movement>): String = Crane(stacks, crateMover9001).apply { move(movements) }.message
 
-    fun part2(input: String): String = ""
+    Parser.parse(readInputAsText("Day05_test")).let { (stacks, movements) ->
+        check(part1(stacks(), movements) == "CMZ")
+        check(part2(stacks(), movements) == "MCD")
+    }
 
-    val testInput = readInputAsText("Day05_test")
-    check(part1(testInput) == "CMZ")
-
-    val input = readInputAsText("Day05")
-    println(part1(input))
-//    println(part2(input))
+    Parser.parse(readInputAsText("Day05")).let { (stacks, movements) ->
+        println(part1(stacks(), movements))
+        println(part2(stacks(), movements))
+    }
 }
