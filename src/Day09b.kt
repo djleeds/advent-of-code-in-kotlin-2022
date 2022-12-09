@@ -1,10 +1,25 @@
 import kotlin.math.abs
 import kotlin.math.sign
 
-data class Motion(val direction: String, val count: Int)
-data class Position(val x: Int, val y: Int)
+data class Motion(val direction: Dir, val count: Int)
+enum class Dir(private val code: String, val vector: Vec2) {
+    UP("U", Vec2(0, 1)), DOWN("D", Vec2(0, -1)), LEFT("L", Vec2(-1, 0)), RIGHT("R", Vec2(1, 0));
 
-private fun parse(input: List<String>) = input.map { it.split(" ").let { m -> Motion(m[0], m[1].toInt()) } }
+    companion object {
+        fun fromCode(code: String): Dir = values().first { it.code == code }
+    }
+}
+
+data class Vec2(val x: Int, val y: Int) {
+    fun isTouching(other: Vec2) = abs(x - other.x) <= 1 && abs(y - other.y) <= 1
+    fun isSameRowAs(other: Vec2) = y == other.y
+    fun isSameColAs(other: Vec2) = x == other.x
+    operator fun minus(other: Vec2) = Vec2(x - other.x, y - other.y)
+    operator fun plus(other: Vec2) = Vec2(x + other.x, y + other.y)
+}
+
+private fun parse(input: List<String>) =
+    input.map { it.split(" ").let { m -> Motion(Dir.fromCode(m[0]), m[1].toInt()) } }
 
 fun main() {
     part1()
@@ -13,33 +28,22 @@ fun main() {
 
 fun part1() {
     val motions = parse(readInput("Day09_test"))
-
-    var head = Position(0, 0)
-    var tail = Position(0, 0)
-
-    val tailVisits = mutableSetOf(tail)
-
-    motions.forEach { motion ->
-        repeat(motion.count) {
-            head = applyMotion(head, motion)
-            tail = tug(head, tail)
-            tailVisits.add(tail)
-        }
-    }
-
-    println(tailVisits.size)
+    println(solve(motions, 2))
 }
 
 
 fun part2() {
     val motions = parse(listOf("R 5", "U 8", "L 8", "D 3", "R 17", "D 10", "L 25", "U 20"))
+    println(solve(motions, 10))
+}
 
-    val rope = Array(10) { Position(0, 0) }
+private fun solve(motions: List<Motion>, ropeSize: Int): Int {
+    val rope = Array(ropeSize) { Vec2(0, 0) }
     val tailVisits = mutableSetOf(rope.last())
 
     motions.forEach { motion ->
         repeat(motion.count) {
-            rope[0] = applyMotion(rope[0], motion)
+            rope[0] = rope[0] + motion.direction.vector
 
             for (i in 0..(rope.size - 2)) {
                 rope[i + 1] = tug(rope[i], rope[i + 1])
@@ -48,35 +52,22 @@ fun part2() {
             tailVisits.add(rope.last())
         }
     }
-
-    println(tailVisits.size)
-
+    return tailVisits.size
 }
 
-private fun applyMotion(head: Position, motion: Motion) = Position(
-    x = head.x + when (motion.direction) {
-        "L" -> -1; "R" -> 1; else -> 0
-    },
-    y = head.y + when (motion.direction) {
-        "U" -> 1; "D" -> -1; else -> 0
-    }
-)
+fun tug(head: Vec2, tail: Vec2): Vec2 {
+    val areTouching = head.isTouching(tail)
+    val areInSameRow = head.isSameRowAs(tail)
+    val areInSameCol = head.isSameColAs(tail)
 
-fun tug(head: Position, tail: Position): Position {
-    val areTouching = abs(head.x - tail.x) <= 1 && abs(head.y - tail.y) <= 1
-    val areInSameRow = head.y == tail.y
-    val areInSameCol = head.x == tail.x
-
-    return when {
-        areInSameRow && head.x - tail.x == 2 -> Position(tail.x + 1, tail.y)
-        areInSameRow && tail.x - head.x == 2 -> Position(tail.x - 1, tail.y)
-        areInSameCol && head.y - tail.y == 2 -> Position(tail.x, tail.y + 1)
-        areInSameCol && tail.y - head.y == 2 -> Position(tail.x, tail.y - 1)
-        else                                 -> {
+    return when (head - tail) {
+        Vec2(2, 0)   -> Vec2(tail.x + 1, tail.y)
+        Vec2(-2, -0) -> Vec2(tail.x - 1, tail.y)
+        Vec2(0, 2)   -> Vec2(tail.x, tail.y + 1)
+        Vec2(0, -2)  -> Vec2(tail.x, tail.y - 1)
+        else         -> {
             if (!areTouching && !areInSameRow && !areInSameCol) {
-                val moveX = (head.x - tail.x).sign
-                val moveY = (head.y - tail.y).sign
-                Position(tail.x + moveX, tail.y + moveY)
+                Vec2(tail.x + (head.x - tail.x).sign, tail.y + (head.y - tail.y).sign)
             } else {
                 tail
             }
