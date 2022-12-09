@@ -1,5 +1,4 @@
-@JvmInline
-value class Tree(val height: Int)
+@JvmInline value class Tree(val height: Int)
 
 class Forest(private val width: Int, private val height: Int) {
     private val trees: Array<Array<Tree?>> = Array(width) { Array(height) { null } }
