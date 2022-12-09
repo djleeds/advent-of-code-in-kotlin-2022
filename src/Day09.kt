@@ -3,11 +3,17 @@ import kotlin.math.max
 import kotlin.math.sign
 import kotlin.properties.Delegates.observable
 
+data class Motion(val direction: String, val count: Int) {
+    companion object {
+        fun parse(line: String) = line.split(" ").let { (dir, count) -> Motion(dir, count.toInt()) }
+    }
+}
+
 data class Vector2(val x: Int = 0, val y: Int = 0) {
     fun isAdjacentTo(other: Vector2) = max(abs(x - other.x), abs(y - other.y)) <= 1
     operator fun plus(other: Vector2) = Vector2(x + other.x, y + other.y)
     operator fun minus(other: Vector2) = Vector2(x - other.x, y - other.y)
-    fun normalizedComponents() = Vector2(x.sign, y.sign)
+    fun unitSized() = Vector2(x.sign, y.sign)
 
     companion object {
         val ORIGIN = Vector2(0, 0)
@@ -22,22 +28,19 @@ class Knot(val next: Knot? = null) {
     val visited: MutableSet<Vector2> = mutableSetOf(Vector2.ORIGIN)
 
     private var position: Vector2 by observable(Vector2.ORIGIN) { _, _, new ->
-        if (next?.position?.isAdjacentTo(new) == false) next.position += (new - next.position).normalizedComponents()
+        if (next?.position?.isAdjacentTo(new) == false) next.position += (new - next.position).unitSized()
         visited.add(new)
     }
 
     fun tail(): Knot = next?.tail() ?: this
 
-    fun move(instructions: List<String>) =
-        instructions.map { it.split(" ") }.forEach { (dir, count) -> move(dir, count.toInt()) }
-
-    private fun move(direction: String, count: Int) = repeat(count) {
-        position += when (direction) {
+    fun move(motion: Motion) = repeat(motion.count) {
+        position += when (motion.direction) {
             "L"  -> Vector2.LEFT
             "R"  -> Vector2.RIGHT
             "U"  -> Vector2.UP
             "D"  -> Vector2.DOWN
-            else -> throw IllegalArgumentException("Unexpected movement direction: $direction")
+            else -> throw IllegalArgumentException()
         }
     }
 
@@ -47,9 +50,11 @@ class Knot(val next: Knot? = null) {
 }
 
 fun main() {
-    fun part1(input: List<String>) = Knot.chain(2).apply { move(input) }.tail().visited.size
-    fun part2(input: List<String>) = Knot.chain(10).apply { move(input) }.tail().visited.size
+    fun solve(input: List<String>, size: Int) =
+        Knot.chain(size).apply { input.map(Motion::parse).forEach(::move) }.tail().visited.size
 
+    fun part1(input: List<String>) = solve(input, 2)
+    fun part2(input: List<String>) = solve(input, 10)
 
     val testInput = readInput("Day09_test")
     println(part1(testInput))
