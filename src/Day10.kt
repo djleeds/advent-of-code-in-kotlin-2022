@@ -21,6 +21,17 @@ class CPU {
     }
 }
 
+class Sprite(val width: Int, val position: Int) {
+    val occupied: IntRange = (position - 1)..(position + 1)
+}
+
+class CRT(val width: Int, val height: Int) {
+    val pixels: MutableList<Boolean> = MutableList((width * height) + 1) { false }
+    fun tick(cycle: Int, sprite: Sprite) {
+        val renderingAt = cycle.rem(width)
+        pixels[cycle] = renderingAt in sprite.occupied
+    }
+}
 
 fun main() {
     fun part1(instructions: List<String>): Int {
@@ -37,16 +48,13 @@ fun main() {
         val cpu = CPU()
         instructions.map(Instruction::parse).forEach(cpu::process)
 
-        val pixels = mutableListOf<Boolean>()
-
-        cpu.xHistory.chunked(40).forEachIndexed { startingAt, values ->
-            values.forEachIndexed { x, horizontalPosition ->
-                val cycle = startingAt + horizontalPosition
-                pixels.add(x in (cycle - 1 - startingAt)..(cycle + 1 - startingAt))
-            }
+        val crt = CRT(40, 6)
+        cpu.xHistory.forEachIndexed { cycle, x ->
+            val sprite = Sprite(3, x)
+            crt.tick(cycle, sprite)
         }
 
-        pixels.joinToString("") { if (it) "#" else " " }.chunked(40).forEach(::println)
+        crt.pixels.joinToString("") { if (it) "#" else " " }.chunked(40).forEach(::println)
 
     }
 
