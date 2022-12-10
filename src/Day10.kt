@@ -15,7 +15,7 @@ class CPU {
     private val x: Int get() = xHistory.last()
     private fun tick(value: Int = x) = xHistory.add(value)
 
-    fun process(instruction: Instruction) {
+    fun execute(program: List<Instruction>) = program.forEach { instruction ->
         repeat(instruction.cycles - 1) { tick() }
         tick(instruction.operation(x))
     }
@@ -36,7 +36,7 @@ class CRT(val width: Int, val height: Int) {
 fun main() {
     fun part1(instructions: List<String>): Int {
         val cpu = CPU()
-        instructions.map(Instruction::parse).forEach(cpu::process)
+        instructions.map(Instruction::parse).let(cpu::execute)
 
         return listOf(20, 60, 100, 140, 180, 220)
             // registerValues represents AFTER the tick. Applying -1 here to get DURING the tick.
@@ -46,7 +46,7 @@ fun main() {
 
     fun part2(instructions: List<String>) {
         val cpu = CPU()
-        instructions.map(Instruction::parse).forEach(cpu::process)
+        instructions.map(Instruction::parse).let(cpu::execute)
 
         val crt = CRT(40, 6)
         cpu.xHistory.forEachIndexed { cycle, x ->
