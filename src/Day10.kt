@@ -11,9 +11,9 @@ sealed class Instruction(val cycles: Int, val operation: (previousX: Int) -> Int
 }
 
 class CPU {
-    val xHistory: MutableList<Int> = mutableListOf(1)
-    private val x: Int get() = xHistory.last()
-    private fun tick(value: Int = x) = xHistory.add(value)
+    val history: MutableList<Int> = mutableListOf(1)
+    private val x: Int get() = history.last()
+    private fun tick(value: Int = x) = history.add(value)
 
     fun execute(program: List<Instruction>) = program.forEach { instruction ->
         repeat(instruction.cycles - 1) { tick() }
@@ -21,16 +21,21 @@ class CPU {
     }
 }
 
-class Sprite(val width: Int, val position: Int) {
-    val occupied: IntRange = (position - 1)..(position + 1)
+class Sprite(width: Int, position: Int) {
+    private val reach = (width - 1) / 2
+    val occupiedPixels: IntRange = (position - reach)..(position + reach)
 }
 
-class CRT(val width: Int, val height: Int) {
-    val pixels: MutableList<Boolean> = MutableList((width * height) + 1) { false }
+class CRT(private val width: Int, height: Int) {
+    private val pixels: MutableList<Boolean> = MutableList((width * height) + 1) { false }
+
     fun tick(cycle: Int, sprite: Sprite) {
         val renderingAt = cycle.rem(width)
-        pixels[cycle] = renderingAt in sprite.occupied
+        pixels[cycle] = renderingAt in sprite.occupiedPixels
     }
+
+    fun render(on: String = "#", off: String = ".") =
+        pixels.joinToString("") { if (it) on else off }.chunked(40).forEach(::println)
 }
 
 fun main() {
@@ -38,24 +43,19 @@ fun main() {
         val cpu = CPU()
         instructions.map(Instruction::parse).let(cpu::execute)
 
-        return listOf(20, 60, 100, 140, 180, 220)
-            // registerValues represents AFTER the tick. Applying -1 here to get DURING the tick.
-            .onEach { println("Cycle $it - X is ${cpu.xHistory[it - 1]}") }
-            .sumOf { cpu.xHistory[it - 1] * it }
+        return listOf(20, 60, 100, 140, 180, 220).sumOf { cpu.history[it - 1] * it }
     }
 
     fun part2(instructions: List<String>) {
         val cpu = CPU()
         instructions.map(Instruction::parse).let(cpu::execute)
 
-        val crt = CRT(40, 6)
-        cpu.xHistory.forEachIndexed { cycle, x ->
-            val sprite = Sprite(3, x)
-            crt.tick(cycle, sprite)
-        }
-
-        crt.pixels.joinToString("") { if (it) "#" else " " }.chunked(40).forEach(::println)
-
+        CRT(40, 6).apply {
+            cpu.history.forEachIndexed { cycle, x ->
+                val sprite = Sprite(3, x)
+                tick(cycle, sprite)
+            }
+        }.render()
     }
 
     val testInput = readInput("Day10_test")
