@@ -40,22 +40,17 @@ class CRT(private val width: Int, height: Int) {
 
 fun main() {
     fun part1(instructions: List<String>): Int {
-        val cpu = CPU()
-        instructions.map(Instruction::parse).let(cpu::execute)
+        val cpu = CPU().apply { execute(instructions.map(Instruction::parse)) }
 
         return listOf(20, 60, 100, 140, 180, 220).sumOf { cpu.history[it - 1] * it }
     }
 
     fun part2(instructions: List<String>) {
-        val cpu = CPU()
-        instructions.map(Instruction::parse).let(cpu::execute)
+        val cpu = CPU().apply { execute(instructions.map(Instruction::parse)) }
 
-        CRT(40, 6).apply {
-            cpu.history.forEachIndexed { cycle, x ->
-                val sprite = Sprite(3, x)
-                tick(cycle, sprite)
-            }
-        }.render()
+        CRT(40, 6)
+            .apply { cpu.history.forEachIndexed { cycle, x -> tick(cycle, Sprite(3, x)) } }
+            .render()
     }
 
     val testInput = readInput("Day10_test")
