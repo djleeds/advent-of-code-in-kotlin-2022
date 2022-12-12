@@ -1,38 +1,39 @@
 import java.util.*
 
-typealias Coordinates = Pair<Int, Int>
+data class Coordinates(val x: Int, val y: Int) {
+    val adjacent: List<Coordinates> by lazy {
+        listOf(Coordinates(x - 1, y), Coordinates(x + 1, y), Coordinates(x, y - 1), Coordinates(x, y + 1))
+    }
+}
 
 enum class PlotType {
     START, END, OTHER;
 
     companion object {
-        fun fromChar(char: Char) = when (char) {
+        fun from(char: Char) = when (char) {
             'S' -> START; 'E' -> END; else -> OTHER
         }
     }
 }
 
-data class Plot(val x: Int, val y: Int, val height: Int, val type: PlotType) {
-    val adjacentCoordinates: List<Coordinates> = listOf(x - 1 to y, x + 1 to y, x to y - 1, x to y + 1)
-
+data class Plot(val coordinates: Coordinates, val height: Int, val type: PlotType) {
     companion object {
-        fun from(x: Int, y: Int, char: Char) = Plot(
-            x, y, when (char) {
-                'S'  -> 0
-                'E'  -> 'z' - 'a'
-                else -> char - 'a'
-            }, PlotType.fromChar(char)
+        fun from(coordinates: Coordinates, char: Char) = Plot(
+            coordinates,
+            when (char) {
+                'S' -> 0; 'E' -> 'z' - 'a'; else -> char - 'a'
+            },
+            PlotType.from(char)
         )
     }
 }
 
 data class Step(val plot: Plot, val distance: Int = 0) {
-    fun toward(plot: Plot): Step = Step(plot, distance + 1)
+    infix fun toward(plot: Plot): Step = Step(plot, distance + 1)
 }
 
 class Terrain(private val plots: List<List<Plot>>) {
-    private val eastWestBounds = plots.first().indices
-    private val northSouthBounds = plots.indices
+    private val bounds = Bounds(plots.first().indices, plots.indices)
     private val endPoint = findPlot { it.type == PlotType.END }
 
     fun shortestDistance(isDestination: (Plot) -> Boolean): Int {
@@ -41,16 +42,16 @@ class Terrain(private val plots: List<List<Plot>>) {
 
         while (steps.isNotEmpty()) {
             val step = steps.poll()
+            log { "Inspecting $step - Queue: $steps" }
             if (isDestination(step.plot)) return step.distance
 
-            log { "Visiting $step - $steps" }
-
-            step.plot.adjacentCoordinates
-                .mapNotNull(::getPlot)
+            step.plot.coordinates.adjacent
+                .filter { it in bounds }
+                .map { plots[it] }
                 .filter { it.height >= step.plot.height - 1 }
                 .filter { it !in visitedPlots }
                 .forEach {
-                    steps.add(step.toward(it))
+                    steps.add(step toward it)
                     visitedPlots.add(it)
                 }
         }
@@ -58,20 +59,19 @@ class Terrain(private val plots: List<List<Plot>>) {
         throw IllegalStateException("Could not find a path that meets the criteria.")
     }
 
-    private fun getPlot(coordinates: Coordinates) =
-        coordinates.takeIf { it.withinBounds() }?.let { (x, y) -> plots[y][x] }
+    private fun findPlot(predicate: (Plot) -> Boolean) = plots.flatten().first(predicate)
 
-    private fun Coordinates.withinBounds() =
-        first in eastWestBounds && second in northSouthBounds
+    private operator fun <T> List<List<T>>.get(coordinates: Coordinates) = this[coordinates.y][coordinates.x]
 
-    private fun findPlot(predicate: (Plot) -> Boolean) =
-        plots.flatten().first(predicate)
+    private class Bounds(private val eastWestBounds: IntRange, private val northSouthBounds: IntRange) {
+        operator fun contains(coordinates: Coordinates) = coordinates.x in eastWestBounds && coordinates.y in northSouthBounds
+    }
 
     companion object {
         fun parse(input: List<String>) =
             input.mapIndexed { y, row ->
                 row.mapIndexed { x, char ->
-                    Plot.from(x, y, char)
+                    Plot.from(Coordinates(x, y), char)
                 }
             }.let(::Terrain)
     }
