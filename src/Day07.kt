@@ -1,31 +1,31 @@
-private class Node private constructor(val name: String, val intrinsicSize: Int? = null, val parent: Node? = null) : Iterable<Node> {
-    private val children: MutableList<Node> = mutableListOf()
+private class Node7 private constructor(val name: String, val intrinsicSize: Int? = null, val parent: Node7? = null) : Iterable<Node7> {
+    private val children: MutableList<Node7> = mutableListOf()
     val totalSize: Int get() = (intrinsicSize ?: 0) + children.sumOf { it.totalSize }
 
     operator fun get(childName: String) = children.first { it.name == childName }
-    fun addChild(node: Node) = children.add(node)
+    fun addChild(node: Node7) = children.add(node)
     val isDirectory get() = intrinsicSize == null
 
-    override fun iterator(): Iterator<Node> = iterator { yield(this@Node); children.forEach { yieldAll(it.iterator()) } }
+    override fun iterator(): Iterator<Node7> = iterator { yield(this@Node7); children.forEach { yieldAll(it.iterator()) } }
     override fun toString(): String = "$name " + if (isDirectory) "(dir)" else "(file, size=$intrinsicSize)"
 
     companion object {
-        fun file(name: String, size: Int, parent: Node) = Node(name, size, parent)
-        fun directory(name: String, parent: Node) = Node(name, parent = parent)
-        fun root() = Node("/")
+        fun file(name: String, size: Int, parent: Node7) = Node7(name, size, parent)
+        fun directory(name: String, parent: Node7) = Node7(name, parent = parent)
+        fun root() = Node7("/")
     }
 }
 
-private fun parse(input: List<String>): Node {
+private fun parse(input: List<String>): Node7 {
     val cd = Regex("\\$ cd (.*)")
     val dir = Regex("dir (.*)")
     val file = Regex("(\\d+) (.*)")
 
-    val root = Node.root()
+    val root = Node7.root()
     var current = root
 
-    fun onDirectoryDiscovered(name: String) = current.addChild(Node.directory(name, current))
-    fun onFileDiscovered(name: String, size: Int) = current.addChild(Node.file(name, size, current))
+    fun onDirectoryDiscovered(name: String) = current.addChild(Node7.directory(name, current))
+    fun onFileDiscovered(name: String, size: Int) = current.addChild(Node7.file(name, size, current))
     fun onDirectoryChanged(name: String) {
         current = when (name) {
             "/" -> root; ".." -> current.parent!!; else -> current[name]

@@ -8,27 +8,27 @@ class Forest(private val width: Int, private val height: Int) {
     }
 
     fun coordinates() = Iterable {
-        iterator { (0 until height).forEach { y -> (0 until width).forEach { x -> yield(Coordinates(x, y)) } } }
+        iterator { (0 until height).forEach { y -> (0 until width).forEach { x -> yield(Coordinates8(x, y)) } } }
     }
 
-    fun isVisible(coordinates: Coordinates) = Direction.values().any { isVisible(coordinates, it) }
-    fun scenicScore(coordinates: Coordinates) = Direction.values().map { scenicScore(coordinates, it) }.fold(1) { acc, it -> acc * it }
+    fun isVisible(coordinates: Coordinates8) = Direction.values().any { isVisible(coordinates, it) }
+    fun scenicScore(coordinates: Coordinates8) = Direction.values().map { scenicScore(coordinates, it) }.fold(1) { acc, it -> acc * it }
 
-    private operator fun Array<Array<Tree?>>.get(coordinates: Coordinates): Tree? =
+    private operator fun Array<Array<Tree?>>.get(coordinates: Coordinates8): Tree? =
         runCatching { this[coordinates.x][coordinates.y] }.getOrNull()
 
-    private fun isVisible(coordinates: Coordinates, direction: Direction): Boolean {
+    private fun isVisible(coordinates: Coordinates8, direction: Direction): Boolean {
         val height = trees[coordinates]!!.height
         return treeLine(coordinates, direction).firstOrNull { it.height >= height } == null
     }
 
-    private fun scenicScore(coordinates: Coordinates, direction: Direction): Int {
+    private fun scenicScore(coordinates: Coordinates8, direction: Direction): Int {
         val height = trees[coordinates]!!.height
         val treeLine = treeLine(coordinates, direction)
         return treeLine.indexOfFirst { it.height >= height }.takeIf { it != -1 }?.plus(1) ?: treeLine.count()
     }
 
-    private fun treeLine(coordinates: Coordinates, direction: Direction) = Iterable {
+    private fun treeLine(coordinates: Coordinates8, direction: Direction) = Iterable {
         iterator {
             var coords = coordinates.step(direction)
             while (coords.x in 0 until width && coords.y in 0 until height) {
@@ -38,7 +38,7 @@ class Forest(private val width: Int, private val height: Int) {
     }
 }
 
-data class Coordinates(val x: Int, val y: Int) {
+data class Coordinates8(val x: Int, val y: Int) {
     fun step(direction: Direction) = when (direction) {
         Direction.NORTH -> copy(y = y - 1)
         Direction.SOUTH -> copy(y = y + 1)
