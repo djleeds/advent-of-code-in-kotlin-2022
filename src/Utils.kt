@@ -18,6 +18,10 @@ fun String.md5() = BigInteger(1, MessageDigest.getInstance("MD5").digest(toByteA
 
 var debug = false
 
-fun log(message: () -> String) {
+fun log(message: () -> Any) {
     if (debug) println(message())
+}
+
+fun log(message: Any) {
+    if (debug) println(message)
 }
