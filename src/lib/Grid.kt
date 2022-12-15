@@ -3,32 +3,46 @@ package lib
 import kotlin.math.max
 import kotlin.math.min
 
-class Grid<T>(private val cells: List<List<Cell<T>>>) {
-    private val flat = cells.flatten()
-    val bounds = Bounds(cells.first().indices, cells.indices)
+class Grid<T>(private val cells: MutableMap<Coordinates, T>, private val default: T) {
+    private val flat get() = cells.map { (key, value) -> Cell(key, value) }
 
-    operator fun get(x: Int, y: Int) = cells[y][x]
-    operator fun get(coordinates: Coordinates) = cells[coordinates.y][coordinates.x]
+    private val xMin get() = flat.minOf { it.coordinates.x }
+    private val xMax get() = flat.maxOf { it.coordinates.x }
+    private val yMin get() = flat.minOf { it.coordinates.y }
+    private val yMax get() = flat.maxOf { it.coordinates.y }
+
+    val bounds: Bounds get() = Bounds(xMin..xMax, yMin..yMax)
+
+    operator fun get(x: Int, y: Int): T = cells.getOrDefault(Coordinates(x, y), default)
+    operator fun get(coordinates: Coordinates): T = cells.getOrDefault(coordinates, default)
+    operator fun set(coordinates: Coordinates, item: T) = cells.put(coordinates, item)
+    operator fun set(x: Int, y: Int, item: T) = cells.put(Coordinates(x, y), item)
 
     fun find(predicate: (Cell<T>) -> Boolean) = flat.first(predicate)
 
-    class Bounds(private val eastWestBounds: IntRange, private val northSouthBounds: IntRange) {
+    fun print(mapping: (T) -> Char) {
+        bounds.northSouthBounds.forEach { y ->
+            bounds.eastWestBounds.forEach { x ->
+                print(mapping(this[x, y]))
+            }
+            println()
+        }
+    }
+
+    class Bounds(val eastWestBounds: IntRange, val northSouthBounds: IntRange) {
         operator fun contains(coordinates: Coordinates) = coordinates.x in eastWestBounds && coordinates.y in northSouthBounds
     }
 
     companion object {
-        fun <T> parseCharacters(input: List<String>, transform: (Char) -> T): Grid<T> =
+        fun <T> parseCharacters(input: List<String>, transform: (Char) -> T, default: T): Grid<T> {
+            val map = mutableMapOf<Coordinates, T>()
             input.mapIndexed { y, row ->
                 row.mapIndexed { x, char ->
-                    Cell(Coordinates(x, y), transform(char))
+                    map.put(Coordinates(x, y), transform(char))
                 }
-            }.let(::Grid)
-
-        fun <T> parseCharacters(input: String, width: Int, transform: (Char) -> T): Grid<T> =
-            parseCharacters(input.chunked(width), transform)
-
-//        fun <T> createEmpty(width: Int, height: Int): Grid<T> =
-//            Grid<T>(MutableList(height) { MutableList(width) {  } })
+            }
+            return Grid(map, default)
+        }
     }
 }
 
@@ -51,14 +65,22 @@ data class Coordinates(val x: Int, val y: Int) {
     }
 
     infix fun through(other: Coordinates): Iterable<Coordinates> = Iterable {
-        val from = this
+        val (minimum, maximum) = canonicalizedWith(other)
         iterator {
-            for (x in min(from.x, other.x)..max(from.x, other.x)) {
-                for (y in min(from.y, other.y)..max(from.y, other.y)) {
+            for (x in minimum.x..maximum.x) {
+                for (y in minimum.y..maximum.y) {
                     yield(Coordinates(x, y))
                 }
             }
         }
+    }
+
+    private fun canonicalizedWith(other: Coordinates): Pair<Coordinates, Coordinates> =
+        Coordinates(min(x, other.x), min(y, other.y)) to Coordinates(max(x, other.x), max(y, other.y))
+
+    fun manhattanDistanceTo(other: Coordinates): Int {
+        val (minimum, maximum) = canonicalizedWith(other)
+        return (maximum.x - minimum.x) + (maximum.y - minimum.y)
     }
 
     companion object {
